@@ -101,14 +101,26 @@ export class SpiProfile implements DeviceProfile<SpiDriverBridge, SpiDriverStatu
     return new OledPanel(buttons, this.oledRunner(session), session.statusLine);
   };
 
-  // The demo board wires the SPIDriver's auxiliary outputs to the display's
-  // control pins: A drives D/C, B drives RST.
   private oledRunner =
     (session: Session) =>
     <T>(task: (oled: MicroOled) => Promise<T>): Promise<T | null> =>
-      session.command((bridge) =>
-        task(new MicroOled(bridge, { dataCommand: bridge.setA, reset: bridge.setB })),
-      );
+      session.command((bridge) => task(SpiProfile.oledOn(bridge)));
+
+  // The demo board wires the SPIDriver's auxiliary outputs to the display's
+  // control pins: A drives D/C, B drives RST. The SPIDriver has explicit
+  // chip select, so each display write is framed in select/deselect here.
+  private static oledOn = (bridge: SpiDriverBridge): MicroOled =>
+    new MicroOled(
+      async (bytes) => {
+        await bridge.select();
+        try {
+          await bridge.write(bytes);
+        } finally {
+          await bridge.deselect();
+        }
+      },
+      { dataCommand: bridge.setA, reset: bridge.setB },
+    );
 
   // A CS-framed transaction expressed through the SpiBus contract.
   private transaction = (session: Session, bytes: number[]): Promise<Uint8Array | null> =>

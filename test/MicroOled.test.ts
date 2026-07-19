@@ -1,21 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { MicroOled, FRAME_BYTES, type OledPins } from "../dist/MicroOled.js";
-import type { SpiBus } from "../dist/SpiBus.js";
 
-// Records every bus and pin operation so tests can assert both content and
-// ordering (D/C level before a write, CS framing around it).
-class Rig implements SpiBus, OledPins {
+// Records every write and pin operation so tests can assert both content
+// and ordering (the D/C level must be set before its write goes out).
+class Rig implements OledPins {
   public ops: string[] = [];
   public writes: { dc: boolean | null; bytes: number[] }[] = [];
   private dc: boolean | null = null;
-
-  public configure = (): Promise<void> => Promise.resolve();
-  public transfer = (): Promise<Uint8Array> => Promise.resolve(new Uint8Array(0));
-  public read = (): Promise<Uint8Array> => Promise.resolve(new Uint8Array(0));
-
-  public select = (): Promise<void> => this.note("select");
-  public deselect = (): Promise<void> => this.note("deselect");
 
   public write = (bytes: ArrayLike<number>): Promise<void> => {
     this.writes.push({ dc: this.dc, bytes: Array.from(bytes) });
@@ -37,7 +29,7 @@ class Rig implements SpiBus, OledPins {
 
 const rigged = () => {
   const rig = new Rig();
-  return { rig, oled: new MicroOled(rig, rig) };
+  return { rig, oled: new MicroOled(rig.write, rig) };
 };
 
 describe("MicroOled", () => {
@@ -73,14 +65,13 @@ describe("MicroOled", () => {
     }
   });
 
-  it("frames every write in chip select", async () => {
+  it("sets the D/C line before each write, never after", async () => {
     const { rig, oled } = rigged();
     await oled.display();
-    for (let i = 0; i < rig.ops.length; i++) {
-      if (rig.ops[i] !== "write") continue;
-      assert.equal(rig.ops[i - 1], "select");
-      assert.equal(rig.ops[i + 1], "deselect");
-    }
+    const firstWrite = rig.ops.indexOf("write");
+    assert.ok(rig.ops[firstWrite - 1].startsWith("dc:"));
+    assert.equal(rig.writes[0].dc, false); // position command
+    assert.equal(rig.writes[1].dc, true); // page data
   });
 
   it("pushes 6 pages at the visible window's column offset of 32", async () => {

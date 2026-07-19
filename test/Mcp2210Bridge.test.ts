@@ -36,9 +36,12 @@ const spiSettingsCommand = (transactionBytes: number): number[] => {
   return command;
 };
 
-const bridgeOver = (script: Exchange[]) => {
+const bridgeOver = (script: Exchange[], config?: ConstructorParameters<typeof Mcp2210Bridge>[2]) => {
   const transport = new MockTransport(script);
-  return { transport, bridge: new Mcp2210Bridge(new ReportChannel(transport, 50), "MCP2210 USB to SPI Master") };
+  return {
+    transport,
+    bridge: new Mcp2210Bridge(new ReportChannel(transport, 50), "MCP2210 USB to SPI Master", config),
+  };
 };
 
 describe("Mcp2210Bridge", () => {
@@ -129,6 +132,37 @@ describe("Mcp2210Bridge", () => {
       { expect: report(0x42, 1, 0, 0, 0x55), reply: [report(0x42, 0xf7)] },
     ]);
     await assert.rejects(bridge.transfer([0x55]), /SPI bus not available: an external master owns it/);
+  });
+
+  it("designates GPIO output pins at open: GPIO function, output, idle high", async () => {
+    const oledWiring = { csPin: 0, bitRate: 1_000_000, spiMode: 0, gpioOutputs: [1, 2] };
+    const expectedChipSettings = report(0x21, 0, 0, 0);
+    expectedChipSettings[4 + 0] = 0x01; // GP0 -> chip select
+    expectedChipSettings[4 + 9] = 0b110; // GP1, GP2 default output high
+    expectedChipSettings[4 + 11] = 0x00; // GP1, GP2 direction output
+    const expectedSpiSettings = spiSettingsCommand(2);
+    expectedSpiSettings[10] = 0xfe; // active CS 0x1fe: GP0 low
+    const { transport, bridge } = bridgeOver(
+      [
+        { expect: report(0x20), reply: [chipSettingsReply(0x00)] },
+        { expect: expectedChipSettings, reply: [report(0x21, 0x00)] },
+        { expect: expectedSpiSettings, reply: [report(0x40, 0x00)] },
+      ],
+      oledWiring,
+    );
+    await bridge.open();
+    assert.equal(transport.written.length, 3);
+  });
+
+  it("drives a GPIO pin by reading the pin values once, then writing the changed word", async () => {
+    const { transport, bridge } = bridgeOver([
+      { expect: report(0x31), reply: [report(0x31, 0x00, 0, 0, 0b111, 0x01)] },
+      { expect: report(0x30, 0, 0, 0, 0b011, 0x01), reply: [report(0x30, 0x00)] },
+      { expect: report(0x30, 0, 0, 0, 0b111, 0x01), reply: [report(0x30, 0x00)] }, // no re-read
+    ]);
+    await bridge.setGpio(2, false);
+    await bridge.setGpio(2, true);
+    assert.equal(transport.written.length, 3);
   });
 
   it("reuses the transaction length across equal-sized transfers", async () => {

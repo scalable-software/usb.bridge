@@ -45,7 +45,7 @@ export class OledPanel {
     });
     if (done) {
       this.inverted = false;
-      this.statusLine.show("OLED initialized (reset via B, D/C via A)");
+      this.statusLine.show("OLED reset and initialized");
     }
   };
 

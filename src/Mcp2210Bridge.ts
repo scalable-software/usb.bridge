@@ -11,6 +11,8 @@ const COMMAND = {
   cancelTransfer: 0x11,
   getChipSettings: 0x20,
   setChipSettings: 0x21,
+  setGpioValue: 0x30,
+  getGpioValue: 0x31,
   setSpiSettings: 0x40,
   getSpiSettings: 0x41,
   transfer: 0x42,
@@ -30,12 +32,17 @@ const ENGINE = {
   running: 0x30,
 } as const;
 
-const PIN_CHIP_SELECT = 0x01; // GP pin designation value
+// GP pin designation values
+const PIN_GPIO = 0x00;
+const PIN_CHIP_SELECT = 0x01;
 
 export interface Mcp2210Config {
   csPin: number;
   bitRate: number;
   spiMode: number;
+  // Pins to drive as general-purpose outputs, idling high (e.g. a display's
+  // D/C and reset lines).
+  gpioOutputs?: number[];
 }
 
 // Defaults matching the USB SPI Click wired to the EasyPIC demo firmware:
@@ -52,6 +59,7 @@ export class Mcp2210Bridge implements Bridge<Mcp2210Status> {
   private product: string;
   private config: Mcp2210Config;
   private transactionBytes: number | null = null;
+  private gpioValues: number | null = null;
 
   constructor(channel: ReportChannel, product: string, config: Mcp2210Config = USB_SPI_CLICK) {
     this.channel = channel;
@@ -59,15 +67,15 @@ export class Mcp2210Bridge implements Bridge<Mcp2210Status> {
     this.config = config;
   }
 
-  public static fromDevice = (device: HIDDevice): Mcp2210Bridge =>
-    new Mcp2210Bridge(new ReportChannel(new WebHidTransport(device)), device.productName);
+  public static fromDevice = (device: HIDDevice, config?: Mcp2210Config): Mcp2210Bridge =>
+    new Mcp2210Bridge(new ReportChannel(new WebHidTransport(device)), device.productName, config);
 
-  // Open the transport, then initialize the chip: designate the CS pin and
-  // apply the configured SPI settings (bridge initialization per the
-  // architecture requirements — bus timing is chipset knowledge).
+  // Open the transport, then initialize the chip: designate the CS and GPIO
+  // pins and apply the configured SPI settings (bridge initialization per
+  // the architecture requirements — bus timing is chipset knowledge).
   public open = async (): Promise<void> => {
     await this.channel.open();
-    await this.designateCsPin();
+    await this.configurePins();
     await this.channel.transact((io) => this.applySettingsOn(io, 2));
   };
 
@@ -112,17 +120,39 @@ export class Mcp2210Bridge implements Bridge<Mcp2210Status> {
     this.transactionBytes = null;
   };
 
+  // Drive one GPIO output (auxiliary lines such as a display's D/C and RST).
+  // The chip sets all pins at once, so the current values are read once and
+  // cached — this bridge is the only writer while the connection is open.
+  public setGpio = (pin: number, high: boolean): Promise<void> =>
+    this.channel.transact(async (io) => {
+      if (this.gpioValues === null) {
+        const current = await io.command([COMMAND.getGpioValue]);
+        Mcp2210Bridge.requireOk(current, COMMAND.getGpioValue);
+        this.gpioValues = current[4] | (current[5] << 8);
+      }
+      const values = high ? this.gpioValues | (1 << pin) : this.gpioValues & ~(1 << pin);
+      const reply = await io.command([COMMAND.setGpioValue, 0, 0, 0, values & 0xff, values >> 8]);
+      Mcp2210Bridge.requireOk(reply, COMMAND.setGpioValue);
+      this.gpioValues = values;
+    });
+
   // --- chip initialization ---
 
-  // Read-modify-write the chip settings so only the CS pin designation
-  // changes; everything else the user configured stays intact.
-  private designateCsPin = (): Promise<void> =>
+  // Read-modify-write the chip settings so only our pins change: the CS pin
+  // designation plus any GPIO outputs (designated GPIO, direction output,
+  // idling high). Everything else the user configured stays intact.
+  private configurePins = (): Promise<void> =>
     this.channel.transact(async (io) => {
       const current = await io.command([COMMAND.getChipSettings]);
       Mcp2210Bridge.requireOk(current, COMMAND.getChipSettings);
-      if (current[4 + this.config.csPin] === PIN_CHIP_SELECT) return;
       const settings = Array.from(current.subarray(4, 19)); // GP0-8, output, direction, other, access
       settings[this.config.csPin] = PIN_CHIP_SELECT;
+      for (const pin of this.config.gpioOutputs ?? []) {
+        settings[pin] = PIN_GPIO;
+        settings[9 + (pin >> 3)] |= 1 << (pin & 0b111); // default output: high
+        settings[11 + (pin >> 3)] &= ~(1 << (pin & 0b111)); // direction: output
+      }
+      if (settings.every((byte, i) => byte === current[4 + i])) return;
       const reply = await io.command([COMMAND.setChipSettings, 0, 0, 0, ...settings]);
       Mcp2210Bridge.requireOk(reply, COMMAND.setChipSettings);
     });

@@ -1,5 +1,3 @@
-import type { SpiBus } from "./SpiBus.js";
-
 export const OLED_WIDTH = 64;
 export const OLED_HEIGHT = 48;
 const PAGES = OLED_HEIGHT / 8;
@@ -41,16 +39,22 @@ export interface OledPins {
   reset(level: boolean): Promise<void>;
 }
 
+// One complete CS-framed, write-only SPI transaction; the display never
+// talks back. Bridges that frame CS in hardware (MCP2210) map this to a
+// plain transfer; bridges with explicit CS (SPIDriver) wrap the write in
+// select/deselect.
+export type OledWriter = (bytes: ArrayLike<number>) => Promise<void>;
+
 // Device driver for the SparkFun Micro OLED (64x48, SSD1306) over SPI.
 // The controller's display RAM cannot be read over SPI, so all drawing
 // happens in a local frame buffer that display() pushes out page by page.
 export class MicroOled {
-  private spi: SpiBus;
+  private write: OledWriter;
   private pins: OledPins;
   private frame = new Uint8Array(FRAME_BYTES);
 
-  constructor(spi: SpiBus, pins: OledPins) {
-    this.spi = spi;
+  constructor(write: OledWriter, pins: OledPins) {
+    this.write = write;
     this.pins = pins;
   }
 
@@ -156,21 +160,12 @@ export class MicroOled {
 
   private command = async (bytes: ArrayLike<number>): Promise<void> => {
     await this.pins.dataCommand(false);
-    await this.chipSelected(() => this.spi.write(bytes));
+    await this.write(bytes);
   };
 
   private data = async (bytes: ArrayLike<number>): Promise<void> => {
     await this.pins.dataCommand(true);
-    await this.chipSelected(() => this.spi.write(bytes));
-  };
-
-  private chipSelected = async (action: () => Promise<void>): Promise<void> => {
-    await this.spi.select();
-    try {
-      await action();
-    } finally {
-      await this.spi.deselect();
-    }
+    await this.write(bytes);
   };
 
   private static pause = (ms: number): Promise<void> =>
