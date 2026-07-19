@@ -35,6 +35,15 @@
             <button class="transfer">Transfer</button>
           </div>
           <ol class="transfer-log" reversed></ol>
+          <h3>Micro OLED (SSD1306, 64×48)</h3>
+          <div class="row">
+            <button class="oled-init" title="Hardware reset (B → RST) and SSD1306 init sequence (A → D/C)">Init OLED</button>
+            <button class="oled-checker" title="8×8 checkerboard test pattern">Checkerboard</button>
+            <button class="oled-border" title="Border and diagonals — makes addressing errors visible">Border</button>
+            <button class="oled-invert" title="Toggle inverted display (0xA6/0xA7)">Invert</button>
+            <button class="oled-clear" title="Blank the frame buffer and push it out">Clear</button>
+            <button class="oled-clock" title="Live HH:MM clock with a blinking colon, synced from this browser">Clock</button>
+          </div>
         </div>
       </section>
       <section id="i2c">

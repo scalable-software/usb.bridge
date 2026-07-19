@@ -5,6 +5,9 @@ import { SpiDriverBridge } from "./SpiDriverBridge.js";
 import type { SpiDriverStatus } from "./SpiDriverStatus.js";
 import { ControlPanel } from "./ControlPanel.js";
 import { TransferConsole } from "./TransferConsole.js";
+import { MicroOled } from "./MicroOled.js";
+import { OledPanel } from "./OledPanel.js";
+import { ClockPanel } from "./ClockPanel.js";
 import { TelemetryView, type Row } from "./TelemetryView.js";
 
 type Session = Device<SpiDriverBridge, SpiDriverStatus>;
@@ -48,6 +51,12 @@ export class SpiProfile implements DeviceProfile<SpiDriverBridge, SpiDriverStatu
   public buildPanels = (root: ParentNode, session: Session): Panel<SpiDriverStatus>[] => [
     this.buildControlPanel(root, session),
     this.buildTransferConsole(root, session),
+    this.buildOledPanel(root, session),
+    new ClockPanel(
+      Dom.element<HTMLButtonElement>(root, ".oled-clock"),
+      this.oledRunner(session),
+      session.statusLine,
+    ),
   ];
 
   private buildControlPanel = (root: ParentNode, session: Session): ControlPanel => {
@@ -80,6 +89,26 @@ export class SpiProfile implements DeviceProfile<SpiDriverBridge, SpiDriverStatu
     };
     return new TransferConsole(elements, (bytes) => this.transaction(session, bytes), session.statusLine);
   };
+
+  private buildOledPanel = (root: ParentNode, session: Session): OledPanel => {
+    const buttons = {
+      init: Dom.element<HTMLButtonElement>(root, ".oled-init"),
+      checker: Dom.element<HTMLButtonElement>(root, ".oled-checker"),
+      border: Dom.element<HTMLButtonElement>(root, ".oled-border"),
+      invert: Dom.element<HTMLButtonElement>(root, ".oled-invert"),
+      clear: Dom.element<HTMLButtonElement>(root, ".oled-clear"),
+    };
+    return new OledPanel(buttons, this.oledRunner(session), session.statusLine);
+  };
+
+  // The demo board wires the SPIDriver's auxiliary outputs to the display's
+  // control pins: A drives D/C, B drives RST.
+  private oledRunner =
+    (session: Session) =>
+    <T>(task: (oled: MicroOled) => Promise<T>): Promise<T | null> =>
+      session.command((bridge) =>
+        task(new MicroOled(bridge, { dataCommand: bridge.setA, reset: bridge.setB })),
+      );
 
   // A CS-framed transaction expressed through the SpiBus contract.
   private transaction = (session: Session, bytes: number[]): Promise<Uint8Array | null> =>
