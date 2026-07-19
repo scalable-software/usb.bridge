@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Excamera Console</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <h1>USB Bridge Console</h1>
+    <nav class="boards">
+      <span>Your boards:</span>
+      <label><input type="checkbox" data-board="spi" checked> SPIDriver</label>
+      <label><input type="checkbox" data-board="i2c" checked> I2CDriver</label>
+      <label><input type="checkbox" data-board="mcp2210" checked> MCP2210</label>
+      <label><input type="checkbox" data-board="mcp2221" checked> MCP2221</label>
+    </nav>
+    <div class="consoles">
+      <section id="spi">
+        <h2>SPIDriver</h2>
+        <button class="connect">Connect</button>
+        <button class="disconnect" hidden>Disconnect</button>
+        <p class="status"></p>
+        <dl class="telemetry"></dl>
+        <div class="controls" hidden>
+          <div class="row">
+            <button class="cs">CS</button>
+            <button class="a">A</button>
+            <button class="b">B</button>
+            <button class="detach" title="Tri-state the SPI pins ('x' command)">Release bus</button>
+          </div>
+          <div class="row">
+            <input class="payload grow" placeholder="hex bytes, e.g. 9F 00 00 00" spellcheck="false">
+            <button class="transfer">Transfer</button>
+          </div>
+          <ol class="transfer-log" reversed></ol>
+        </div>
+      </section>
+      <section id="i2c">
+        <h2>I2CDriver</h2>
+        <button class="connect">Connect</button>
+        <button class="disconnect" hidden>Disconnect</button>
+        <p class="status"></p>
+        <dl class="telemetry"></dl>
+        <div class="controls" hidden>
+          <div class="row">
+            <button class="speed" title="Toggle the I2C bus speed between 100 and 400 kHz">Speed</button>
+            <button class="reset" title="Pulse SCL and send STOP to free a stuck bus ('x' command)">Reset bus</button>
+            <button class="scan" title="Probe addresses 0x08-0x77 ('d' command)">Scan bus</button>
+          </div>
+          <p class="scan-results"></p>
+          <div class="row">
+            <input class="device" placeholder="addr" size="5" spellcheck="false" title="7-bit device address, hex">
+            <input class="payload grow" placeholder="hex bytes to write, e.g. 00 10" spellcheck="false">
+            <input class="count" type="number" min="1" max="256" value="1" title="number of bytes to read">
+          </div>
+          <div class="row">
+            <button class="write" title="START + write + STOP">Write</button>
+            <button class="read" title="START + read + STOP">Read</button>
+            <button class="write-read" title="Write, repeated START, then read — e.g. select a register and read it">Write → Read</button>
+          </div>
+          <ol class="transfer-log" reversed></ol>
+        </div>
+      </section>
+      <section id="mcp2210">
+        <h2>MCP2210</h2>
+        <button class="connect">Connect</button>
+        <button class="disconnect" hidden>Disconnect</button>
+        <p class="status"></p>
+        <dl class="telemetry"></dl>
+        <div class="controls" hidden>
+          <div class="row">
+            <input class="payload grow" placeholder="hex bytes, e.g. 0A 00" spellcheck="false">
+            <button class="transfer" title="One CS-framed full-duplex SPI transaction">Transfer</button>
+          </div>
+          <ol class="transfer-log" reversed></ol>
+        </div>
+      </section>
+      <section id="mcp2221">
+        <h2>MCP2221</h2>
+        <button class="connect">Connect</button>
+        <button class="disconnect" hidden>Disconnect</button>
+        <p class="status"></p>
+        <dl class="telemetry"></dl>
+        <div class="controls" hidden>
+          <div class="row">
+            <button class="speed" title="Toggle the I2C bus speed between 100 and 400 kHz">Speed</button>
+            <button class="reset" title="Cancel the current transfer and free the I2C bus">Free bus</button>
+            <button class="scan" title="Probe addresses 0x08-0x77 with one-byte reads">Scan bus</button>
+          </div>
+          <p class="scan-results"></p>
+          <div class="row">
+            <input class="device" placeholder="addr" size="5" spellcheck="false" title="7-bit device address, hex">
+            <input class="payload grow" placeholder="hex bytes to write, e.g. 00 10" spellcheck="false">
+            <input class="count" type="number" min="1" max="256" value="1" title="number of bytes to read">
+          </div>
+          <div class="row">
+            <button class="write" title="START + write + STOP">Write</button>
+            <button class="read" title="START + read + STOP">Read</button>
+            <button class="write-read" title="Write with no STOP, repeated START, then read">Write → Read</button>
+          </div>
+          <ol class="transfer-log" reversed></ol>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script type="module" src="dist/main.js"></script>
+</body>
+</html>

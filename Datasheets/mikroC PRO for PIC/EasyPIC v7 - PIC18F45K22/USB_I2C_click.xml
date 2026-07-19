@@ -1,0 +1,13 @@
+<FTDI_click>
+	<Attributes>
+		<Url>http://www.mikroe.com/click/ftdi/</Url>
+		<Image></Image>
+		<File></File>
+	</Attributes>
+	<Events>
+		<OnLeftClick>None</OnLeftClick>
+		<OnRightClick>None</OnRightClick>
+		<OnDblClick>OpenUrl</OnDblClick>
+		<OnMouseOver>PreviewImage</OnMouseOver>
+	</Events>
+</FTDI_click>

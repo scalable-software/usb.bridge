@@ -1,0 +1,50 @@
+<svg width="680" height="375" viewBox="0 0 680 375" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>SPI transaction at byte level: read flash ID</title>
+<desc>Chip select stays low while four bytes stream over the bus: the master sends command 0x9F then three dummy bytes on MOSI, and the slave answers on MISO with 0xEF, 0x40 and 0x18 after one ignored byte. Each byte takes eight clock pulses; the first byte column is the one shown bit-by-bit in the timing diagram.</desc>
+<style>
+text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+.t{font-size:14px;font-weight:500;fill:#2C2C2A}
+.ts{font-size:12px;fill:#5F5E5A}
+.c-teal rect{fill:#E1F5EE;stroke:#0F6E56;stroke-width:1.5}
+.c-teal .t{fill:#085041}
+.c-teal .ts{fill:#0F6E56}
+.c-purple rect{fill:#EEEDFE;stroke:#534AB7;stroke-width:1.5}
+.c-purple .t{fill:#3C3489}
+.c-purple .ts{fill:#534AB7}
+.c-gray rect{fill:#F1EFE8;stroke:#5F5E5A;stroke-width:1.5}
+.c-gray .t{fill:#444441}
+.c-gray .ts{fill:#5F5E5A}
+</style>
+<defs>
+<marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#888780"/></marker>
+<path id="burst" d="M0,0 h5 h3.25 v-24 h6 v24 h3.25 h3.25 v-24 h6 v24 h3.25 h3.25 v-24 h6 v24 h3.25 h3.25 v-24 h6 v24 h3.25 h3.25 v-24 h6 v24 h3.25 h3.25 v-24 h6 v24 h3.25 h3.25 v-24 h6 v24 h3.25 h3.25 v-24 h6 v24 h3.25 h5" fill="none" stroke="#888780" stroke-width="2"/>
+</defs>
+<rect x="0" y="0" width="680" height="375" fill="#ffffff"/>
+<text class="ts" x="112" y="60">idle</text>
+<text class="ts" x="380" y="90" text-anchor="middle">CS low for the whole 4-byte transaction</text>
+<text class="t" x="40" y="86">CS</text>
+<text class="ts" x="40" y="103">active low</text>
+<path d="M110,68 H140 V96 H620 V68 H640" fill="none" stroke="#888780" stroke-width="2"/>
+<text class="t" x="40" y="154">SCLK</text>
+<text class="ts" x="40" y="171">8 clocks / byte</text>
+<use href="#burst" x="160" y="162"/>
+<use href="#burst" x="270" y="162"/>
+<use href="#burst" x="380" y="162"/>
+<use href="#burst" x="490" y="162"/>
+<text class="t" x="40" y="208">MOSI</text>
+<text class="ts" x="40" y="226">master out</text>
+<g class="c-teal"><rect x="160" y="190" width="110" height="44" rx="4"/><text class="t" x="215" y="208" text-anchor="middle">0x9F</text><text class="ts" x="215" y="226" text-anchor="middle">read-ID cmd</text></g>
+<g class="c-gray"><rect x="270" y="190" width="110" height="44" rx="4"/><text class="t" x="325" y="208" text-anchor="middle">0x00</text><text class="ts" x="325" y="226" text-anchor="middle">dummy</text></g>
+<g class="c-gray"><rect x="380" y="190" width="110" height="44" rx="4"/><text class="t" x="435" y="208" text-anchor="middle">0x00</text><text class="ts" x="435" y="226" text-anchor="middle">dummy</text></g>
+<g class="c-gray"><rect x="490" y="190" width="110" height="44" rx="4"/><text class="t" x="545" y="208" text-anchor="middle">0x00</text><text class="ts" x="545" y="226" text-anchor="middle">dummy</text></g>
+<text class="t" x="40" y="278">MISO</text>
+<text class="ts" x="40" y="296">slave out</text>
+<g class="c-gray"><rect x="160" y="260" width="110" height="44" rx="4"/><text class="t" x="215" y="278" text-anchor="middle">0xA5</text><text class="ts" x="215" y="296" text-anchor="middle">ignored</text></g>
+<g class="c-purple"><rect x="270" y="260" width="110" height="44" rx="4"/><text class="t" x="325" y="278" text-anchor="middle">0xEF</text><text class="ts" x="325" y="296" text-anchor="middle">manufacturer</text></g>
+<g class="c-purple"><rect x="380" y="260" width="110" height="44" rx="4"/><text class="t" x="435" y="278" text-anchor="middle">0x40</text><text class="ts" x="435" y="296" text-anchor="middle">memory type</text></g>
+<g class="c-purple"><rect x="490" y="260" width="110" height="44" rx="4"/><text class="t" x="545" y="278" text-anchor="middle">0x18</text><text class="ts" x="545" y="296" text-anchor="middle">capacity</text></g>
+<rect x="154" y="126" width="122" height="190" rx="6" fill="none" stroke="#888780" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text class="ts" x="160" y="336">dashed outline = the byte shown bit-by-bit in the timing diagram</text>
+<line x1="160" y1="354" x2="596" y2="354" stroke="#888780" stroke-width="1.5" marker-end="url(#ah)"/>
+<text class="ts" x="604" y="358">time</text>
+</svg>

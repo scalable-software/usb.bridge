@@ -1,0 +1,23 @@
+{
+  "name": "@scalable.software/hardware-engineering",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "build": "tsc -p src",
+    "watch": "tsc -p src --watch",
+    "check": "npm run build && tsc -p test",
+    "pretest": "npm run build",
+    "test": "node --test \"test/*.test.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "@types/w3c-web-hid": "^1.0.7",
+    "@types/w3c-web-serial": "^1.0.8",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
