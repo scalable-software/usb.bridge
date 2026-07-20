@@ -43,6 +43,12 @@ describe("Serial", () => {
     expect(await serial.granted()).toEqual(fake.ports);
   });
 
+  it("forgets a port by delegating to its forget()", async () => {
+    const port = new FakePort();
+    await serial.forget(port as unknown as SerialPort);
+    expect(port.forgotten).toBe(true);
+  });
+
   it("registers a connect handler that receives the port from event.target", () => {
     const seen: unknown[] = [];
     serial.onconnect = (port) => seen.push(port);

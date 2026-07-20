@@ -48,6 +48,12 @@ describe("HID", () => {
     expect(await hid.granted()).toEqual(fake.devices);
   });
 
+  it("forgets a device by delegating to its forget()", async () => {
+    const device = new FakeDevice();
+    await hid.forget(device as unknown as HIDDevice);
+    expect(device.forgotten).toBe(true);
+  });
+
   it("registers a connect handler that receives the device from event.device", () => {
     const seen: unknown[] = [];
     hid.onconnect = (device) => seen.push(device);
