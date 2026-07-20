@@ -6,11 +6,9 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["w3c-web-serial", "w3c-web-hid"],
     "strict": true,
-    "declaration": true,
     "verbatimModuleSyntax": true,
     "erasableSyntaxOnly": true,
-    "rootDir": ".",
-    "outDir": "../dist"
+    "noEmit": true
   },
   "include": ["./**/*.ts"]
 }
