@@ -7,23 +7,23 @@ export class HID implements Transport<HIDDevice> {
     productId: product,
   });
 
-  private connectListener: EventListener | null = null;
-  private disconnectListener: EventListener | null = null;
+  private _onconnect: EventListener | null = null;
+  private _ondisconnect: EventListener | null = null;
 
   private get api(): typeof navigator.hid {
     return navigator.hid;
   }
 
   public set onconnect(handler: Handler<HIDDevice> | null) {
-    this.connectListener && this.api.removeEventListener(Events.CONNECT, this.connectListener);
-    this.connectListener = handler && ((event) => handler((event as HIDConnectionEvent).device));
-    this.connectListener && this.api.addEventListener(Events.CONNECT, this.connectListener);
+    this._onconnect && this.api.removeEventListener(Events.CONNECT, this._onconnect);
+    this._onconnect = handler && ((event) => handler((event as HIDConnectionEvent).device));
+    this._onconnect && this.api.addEventListener(Events.CONNECT, this._onconnect);
   }
 
   public set ondisconnect(handler: Handler<HIDDevice> | null) {
-    this.disconnectListener && this.api.removeEventListener(Events.DISCONNECT, this.disconnectListener);
-    this.disconnectListener = handler && ((event) => handler((event as HIDConnectionEvent).device));
-    this.disconnectListener && this.api.addEventListener(Events.DISCONNECT, this.disconnectListener);
+    this._ondisconnect && this.api.removeEventListener(Events.DISCONNECT, this._ondisconnect);
+    this._ondisconnect = handler && ((event) => handler((event as HIDConnectionEvent).device));
+    this._ondisconnect && this.api.addEventListener(Events.DISCONNECT, this._ondisconnect);
   }
 
   public supported = (): boolean => !!this.api;
