@@ -41,5 +41,5 @@ export class Serial implements Transport<SerialPort> {
 
   public granted = (): Promise<SerialPort[]> => this.api.getPorts();
 
-  public forget = ({forget}: SerialPort): Promise<void> => forget();
+  public forget = (port: SerialPort): Promise<void> => port.forget();
 }

@@ -41,6 +41,6 @@ export class HID implements Transport<HIDDevice> {
 
   public granted = (): Promise<HIDDevice[]> => this.api.getDevices();
 
-  public forget = ({forget}: HIDDevice): Promise<void> => forget();
+  public forget = (device: HIDDevice): Promise<void> => device.forget();
 
 }
