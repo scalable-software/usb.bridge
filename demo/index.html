@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <title>Transport Discovery Demo</title>
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      max-width: 60rem; margin: 0 auto; padding: 1.5rem; line-height: 1.5;
+    }
+    h1 { margin-bottom: 0.25rem; }
+    .lede { margin-top: 0; opacity: 0.75; }
+    .note {
+      border-left: 3px solid #8888; padding: 0.5rem 0.9rem; margin: 1rem 0;
+      background: color-mix(in srgb, currentColor 5%, transparent); font-size: 0.9rem;
+    }
+    .panels { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .panel {
+      flex: 1 1 22rem; border: 1px solid #8886; border-radius: 0.6rem; padding: 1rem;
+    }
+    .panel h2 { margin: 0 0 0.1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .panel .api { font-size: 0.8rem; opacity: 0.65; margin: 0 0 0.9rem; }
+    .badge { font-size: 0.7rem; padding: 0.1rem 0.5rem; border-radius: 1rem; font-weight: 600; }
+    .badge.yes { background: #1a7f37; color: #fff; }
+    .badge.no { background: #b3261e; color: #fff; }
+    .row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+    button {
+      font: inherit; padding: 0.4rem 0.8rem; border-radius: 0.4rem;
+      border: 1px solid #8887; background: color-mix(in srgb, currentColor 8%, transparent);
+      color: inherit; cursor: pointer;
+    }
+    button:hover { background: color-mix(in srgb, currentColor 16%, transparent); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .out { font-size: 0.85rem; min-height: 1.4rem; opacity: 0.85; }
+    h2.log-title { margin: 1.5rem 0 0.4rem; }
+    #log {
+      margin: 0; padding: 0.6rem 0.9rem; border-radius: 0.5rem; list-style: none;
+      background: color-mix(in srgb, currentColor 6%, transparent);
+      font-family: ui-monospace, "Cascadia Code", monospace; font-size: 0.8rem;
+      max-height: 16rem; overflow-y: auto;
+    }
+    #log li { padding: 0.15rem 0; border-bottom: 1px solid #8882; }
+    #log li:last-child { border-bottom: none; }
+    .tag { display: inline-block; width: 3.2rem; font-weight: 600; }
+    .tag.serial { color: #8250df; }
+    .tag.hid { color: #0969da; }
+    code { font-family: ui-monospace, monospace; }
+  </style>
+</head>
+<body>
+  <h1>Transport Discovery Demo</h1>
+  <p class="lede">The symmetric <code>Transport</code> contract, live: <code>Serial</code> and <code>HID</code> answering the same API.</p>
+
+  <div class="note">
+    This demonstrates the discovery / permission layer we have built so far —
+    <code>supported()</code>, <code>requestPermission()</code>, <code>granted()</code>,
+    <code>forget()</code>, and the <code>onconnect</code>/<code>ondisconnect</code> events.
+    Both columns run the identical contract over different browser APIs; only the
+    filter and the concrete class differ. Reading and writing bytes (the
+    <code>Connection</code> layer) is the next roadmap step and is not here yet.
+    Needs Chrome or Edge on desktop.
+  </div>
+
+  <div class="panels">
+    <section class="panel" id="serial-panel">
+      <h2>Serial <span class="badge" id="serial-support">…</span></h2>
+      <p class="api">navigator.serial · Web Serial · e.g. SPIDriver (FTDI)</p>
+      <div class="row">
+        <button data-serial="request">Request permission…</button>
+        <button data-serial="granted">List granted</button>
+        <button data-serial="forget">Forget last</button>
+      </div>
+      <p class="out" id="serial-out">Idle.</p>
+    </section>
+
+    <section class="panel" id="hid-panel">
+      <h2>HID <span class="badge" id="hid-support">…</span></h2>
+      <p class="api">navigator.hid · WebHID · e.g. MCP2210 (Microchip)</p>
+      <div class="row">
+        <button data-hid="request">Request permission…</button>
+        <button data-hid="granted">List granted</button>
+        <button data-hid="forget">Forget last</button>
+      </div>
+      <p class="out" id="hid-out">Idle.</p>
+    </section>
+  </div>
+
+  <h2 class="log-title">Event log</h2>
+  <ul id="log"><li>Plug or unplug a device to see <code>onconnect</code> / <code>ondisconnect</code> fire.</li></ul>
+
+  <script type="module">
+    import { Serial } from "../src/Serial.js";
+    import { HID } from "../src/HID.js";
+
+    // Board filters, expressed in the contract's neutral vocabulary.
+    const SPIDRIVER = { vendor: 0x0403 };                    // FTDI
+    const MCP2210 = { vendor: 0x04d8, product: 0x00de };     // Microchip
+
+    const logEl = document.querySelector("#log");
+    const log = (kind, message) => {
+      const li = document.createElement("li");
+      li.innerHTML = `<span class="tag ${kind}">${kind}</span> ${message}`;
+      logEl.prepend(li);
+    };
+
+    const badge = (el, ok) => {
+      el.textContent = ok ? "supported" : "unavailable";
+      el.className = `badge ${ok ? "yes" : "no"}`;
+    };
+
+    // One wiring routine for BOTH transports — the payoff of the symmetry.
+    // `describe` is the only per-API difference: how you name a handle.
+    const wire = ({ transport, kind, filter, out, buttons, describe }) => {
+      let last = null;
+      const supported = transport.supported();
+      badge(document.querySelector(`#${kind}-support`), supported);
+      for (const button of buttons) button.disabled = !supported;
+      if (!supported) { out.textContent = "This browser has no such API."; return; }
+
+      buttons.find((b) => b.dataset[kind] === "request").onclick = async () => {
+        out.textContent = "Waiting for the picker…";
+        const device = await transport.requestPermission([filter]);
+        if (!device) { out.textContent = "Cancelled — no device granted."; return; }
+        last = device;
+        out.textContent = `Granted: ${describe(device)}`;
+        log(kind, `permission granted → ${describe(device)}`);
+      };
+
+      buttons.find((b) => b.dataset[kind] === "granted").onclick = async () => {
+        const devices = await transport.granted();
+        out.textContent = devices.length
+          ? `${devices.length} already granted: ${devices.map(describe).join(", ")}`
+          : "None granted yet.";
+      };
+
+      buttons.find((b) => b.dataset[kind] === "forget").onclick = async () => {
+        if (!last) { out.textContent = "Nothing to forget — request one first."; return; }
+        await transport.forget(last);
+        out.textContent = `Forgot: ${describe(last)}`;
+        log(kind, `forgot ${describe(last)}`);
+        last = null;
+      };
+
+      // DOM-style event properties, assigned once.
+      transport.onconnect = (device) => log(kind, `connect → ${describe(device)}`);
+      transport.ondisconnect = (device) => log(kind, `disconnect → ${describe(device)}`);
+    };
+
+    // A SerialPort has no name; identify it by the USB IDs from getInfo().
+    const describePort = (port) => {
+      const info = port.getInfo?.() ?? {};
+      const vendor = info.usbVendorId?.toString(16).padStart(4, "0") ?? "????";
+      const product = info.usbProductId?.toString(16).padStart(4, "0") ?? "????";
+      return `serial 0x${vendor}:0x${product}`;
+    };
+    const describeDevice = (device) => device.productName || "HID device";
+
+    wire({
+      transport: new Serial(),
+      kind: "serial",
+      filter: SPIDRIVER,
+      out: document.querySelector("#serial-out"),
+      buttons: [...document.querySelectorAll("[data-serial]")],
+      describe: describePort,
+    });
+
+    wire({
+      transport: new HID(),
+      kind: "hid",
+      filter: MCP2210,
+      out: document.querySelector("#hid-out"),
+      buttons: [...document.querySelectorAll("[data-hid]")],
+      describe: describeDevice,
+    });
+  </script>
+</body>
+</html>
